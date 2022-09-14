@@ -2,8 +2,12 @@ const express = require("express");
 const router = express.Router();
 const User = require("../mongoose_module/Users");
 const { body, validationResult } = require("express-validator");
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-// Create a user using POST method --- End Point is --> /api/auth/createuser
+const JWT_SECRET = 'notebook@website';
+
+// Route: 1 -> Create a user using POST method --- End Point is --> /api/auth/createuser
 
 router.post(
   "/createuser",
@@ -24,6 +28,8 @@ router.post(
     }
 
     try {
+      const salt = await bcrypt.genSalt(10);
+      let newPass = await bcrypt.hash(req.body.password, salt);
       let userEmail = await User.findOne({ email: req.body.email });
 
       if (userEmail) {
@@ -33,9 +39,19 @@ router.post(
       let users = await User.create({
         name: req.body.name,
         email: req.body.email,
-        password: req.body.password,
+        password: newPass,
       });
-      res.send(users);
+
+      const data = {
+        user:{
+          id:users.id,
+        }
+      }
+
+      const authToken = jwt.sign(data, JWT_SECRET);
+      // console.log(jwtData);
+
+      res.send({authToken});
     } catch (error) {
       res.status(500).json({ error: "Some error occured" });
     }
